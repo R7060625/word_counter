@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #define nonwords " ,.;:!?\n\t"
 
 /*PREMIER ALGORITHME : 
@@ -22,7 +23,20 @@ typedef struct {
     char* mot[];
 } Mot;
 
+int delimite_mot(char** chaine, FILE* fichier, char char_debut){
 
+    chaine[0] = &char_debut;
+    int index = 1;
+
+    char c;
+
+    while(!strchr(nonwords, (c = fgetc(fichier)))) {
+        chaine[index] = &c;
+        index++;
+    }
+
+    return 1;
+}   
 
 int compteMots_algo1(FILE *fichier, Mot* liste_iter) {
 
@@ -30,6 +44,10 @@ int compteMots_algo1(FILE *fichier, Mot* liste_iter) {
 
     int c;
     while ((c = fgetc(fichier)) != EOF) {
+
+        char chaine[50];
+
+        /*// on tombe sur un séparateur
         if (strchr(nonwords, c)) {
             
             c = fgetc(fichier);
@@ -40,7 +58,16 @@ int compteMots_algo1(FILE *fichier, Mot* liste_iter) {
             };
 
             compteur++;
-        };
+        };*/
+
+        if (!strchr(nonwords, c)) { // lettre valide 
+
+            // delimite_mot
+
+        }
+
+
+
     }
     return compteur;
 }
