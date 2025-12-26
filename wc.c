@@ -19,73 +19,83 @@ typedef struct {
 } InfoMem;
 
 typedef struct {
-    int iteration;
-    char* mot[];
+    int nb_iterations;
+    char chaine[];
 } Mot;
 
-int delimite_mot(char** chaine, FILE* fichier, char char_debut){
+int delimite_mot(char* res, FILE* fichier, char char_debut){
 
-    chaine[0] = &char_debut;
+    res[0] = char_debut;
     int index = 1;
 
-    char c;
+    char c =  fgetc(fichier);
 
-    while(!strchr(nonwords, (c = fgetc(fichier)))) {
-        chaine[index] = &c;
+    while(!strchr(nonwords, c)) {
+        res[index] = c;
         index++;
     }
 
     return 1;
 }   
 
-int compteMots_algo1(FILE *fichier, Mot* liste_iter) {
+int is_a_nonword(char c) {
 
-    int compteur = 1;
+    if (strchr(nonwords, c))
+        return 1;
+    return 0;
 
-    int c;
+}
+
+int alloue_mot(Mot* mot, char* chaine) {
+
+    Mot* cell = (Mot*) malloc(sizeof(Mot));
+    if (!cell)
+        return 0;
+
+    mot->nb_iterations = 1;
+    strcpy(mot->chaine, chaine);
+    return 1;
+}
+
+
+int compte_iter_algo1(FILE* fichier){
+
+    char c;
+
     while ((c = fgetc(fichier)) != EOF) {
 
-        char chaine[50];
+        if (!is_a_nonword(c)) { // est un caractère valide
 
-        /*// on tombe sur un séparateur
-        if (strchr(nonwords, c)) {
+            char chaine[50];
+            delimite_mot(chaine, fichier, c);
+
+            Mot mot;
+            alloue_mot(&mot, chaine);
+            printf(" mot : chaine = %s, iter = %d\n", mot.chaine, mot.nb_iterations);
+
             
-            c = fgetc(fichier);
-
-            // tant qu'il y a un separateur, on prend le nouveau caractere
-            while (strchr(nonwords, c)) {
-                c = fgetc(fichier);
-            };
-
-            compteur++;
-        };*/
-
-        if (!strchr(nonwords, c)) { // lettre valide 
-
-            // delimite_mot
-
         }
 
 
 
     }
-    return compteur;
+
+    return 1;
 }
-
-
 
 int main(int argc, char* argv[]) {
 
     Mot* liste_iter = (Mot *) malloc(1000 * sizeof(Mot)); // On commence par ajouter 1000 emplacements de mots dans la liste 
 
     FILE *file = fopen(argv[1], "r");
-        printf("Il y a %d mots dans le fichier %s\n", compteMots_algo1(file, liste_iter), argv[1]);
+        //printf("Il y a %d mots dans le fichier %s\n", compteMots_algo1(file, liste_iter), argv[1]);
 
-        /*char string[500];
-        assigneLigne(file, string);
+    if (!file) 
+        return 1;
 
-        printf("La ligne est %s", string );*/
-        fclose(file);
+    compte_iter_algo1(file);
+    
+    fclose(file);
 
 
     return 0;
