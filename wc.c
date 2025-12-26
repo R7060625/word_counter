@@ -22,7 +22,6 @@ typedef struct {
     int nb_iterations;
     char chaine[1];
     Mot* suivant;
-    Mot* prev;
 } Mot, *Liste;
 
 
@@ -51,12 +50,12 @@ int is_a_nonword(char c) {
 
 }
 
-Mot* creer_mot(const char* chaine) {
+Mot* alloue_mot(const char* chaine) {
     // Calculer la taille nécessaire pour la structure et la chaîne
-    size_t size = sizeof(Mot) + strlen(chaine); // pas besoin de +1 car chaine[1] est déjà compte
+    size_t size = sizeof(Mot) + strlen(chaine); // pas besoin de +1 car chaine[1] est déjà compté
     Mot* mot = (Mot*) malloc(size);
     if (!mot) {
-        return NULL;
+        return NULL; //l'allocation échoue
     }
     mot->nb_iterations = 1;
     strcpy(mot->chaine, chaine);
@@ -65,11 +64,13 @@ Mot* creer_mot(const char* chaine) {
 }
 
 
-int ajoute_mot(Liste liste, Mot mot) { // utiliser un pointeur sur liste pour accéder au dernier élément et raccorder le nouvel élém
+int ajoute_mot(Liste* lst, Mot mot) { // utiliser un pointeur sur liste pour accéder au dernier élément et raccorder le nouvel élém
 
-    for (liste; liste->suivant != NULL; liste = liste->suivant) {
-
+    while (*lst != NULL) {
+        lst = &(*lst)->next;
     }
+    *lst = mot;
+    return 0;
 }
 
 int compte_iter_algo1(FILE* fichier){
