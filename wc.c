@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
-#define nonwords " ,.;:!?_*\\\n\t0123456789"
+#define nonwords " ,.;:!?_*\\\n\t0123456789\"\'#][&"
 
 /*PREMIER ALGORITHME : 
     rangement itératif des mots; Dès qu'un nouveau mot est rencontré,
@@ -32,6 +32,14 @@ typedef struct {
 
 
 
+int is_a_nonword(char c) {
+
+    if (strchr(nonwords, c))
+        return 1;
+    return 0;
+
+}
+
 char *delimite_chaine(FILE *fichier, char char_debut)
 {
     int capacite = 16; //taille initiale de notre mot
@@ -44,7 +52,7 @@ char *delimite_chaine(FILE *fichier, char char_debut)
 
     int c = fgetc(fichier);
 
-    while (c != EOF && !strchr(nonwords, c)) { // si on inverse le sens des comparaisons, on risque de faire strchr(nw, EOF) (eof = -1) -> impossible
+    while (c != EOF && !is_a_nonword(c)) { // si on inverse le sens des comparaisons, on risque de faire strchr(nw, EOF) (eof = -1) -> impossible
 
         // on double la capacité si nécessaire
         if (len + 1 >= capacite) {      // +1 pour '\0'
@@ -65,15 +73,6 @@ char *delimite_chaine(FILE *fichier, char char_debut)
     // on ajoute le caractère de fin 
     res[len] = '\0';
     return res;
-}
-
-
-int is_a_nonword(char c) {
-
-    if (strchr(nonwords, c))
-        return 1;
-    return 0;
-
 }
 
 Mot* alloue_mot(const char* chaine) {
@@ -171,13 +170,15 @@ int compte_iter_algo1(FILE* fichier){
     while ((c = fgetc(fichier)) != EOF){
         printf("caractere analyse : %c\n", c);
         
-        if (strchr(nonwords, c)) {                  // si 'c' est un séparateur,
+        if ( c != EOF && is_a_nonword(c)) {                  // si 'c' est un séparateur,
             c = fgetc(fichier);                     // on récupère un nouveau caractère
-            while (strchr(nonwords, c)){            // puis tant qu'il y a des séparateurs,
+            while ( c != EOF && is_a_nonword(c)){            // puis tant qu'il y a des séparateurs,
                 c = fgetc(fichier);                 // on prend un nouveau caractère
+                printf(" caractere analyse pendant la selection des separateurs :%c", c);
             }
         }
-
+        if (c == EOF)
+            return 0;
         printf("debut chaine\n");
         char* chaine = delimite_chaine(fichier, c); // découpe la suite de lettres entre des séparateurs (aka un mot)
 
@@ -238,3 +239,4 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
+
