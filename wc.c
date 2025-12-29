@@ -14,23 +14,16 @@
 */
 
 typedef struct {
-    int cumul_alloc; // liste dynamique de chaînes
-    int  cumul_desalloc; // champ obligatoire : cumul de l’espace mémoire désalloué
-    int max_alloc;
+    size_t cumul_alloc;
+    size_t  cumul_desalloc; // champ obligatoire : cumul de l’espace mémoire désalloué
+    size_t max_alloc;
+    size_t cumul_taille_mots;
 } InfoMem;
 
 typedef struct mot {
     int nb_iterations;
-    struct mot* suivant;
-    char chaine[];
-} Mot, *Liste;
-
-typedef struct {
     char* chaine;
-    int size_chaine;
-} Chaine;
-
-
+} Mot, *Liste;
 
 int is_a_nonword(char c) {
 
@@ -75,39 +68,43 @@ char *delimite_chaine(FILE *fichier, char char_debut)
     return res;
 }
 
-Mot* alloue_mot(const char* chaine) {
+Mot* alloue_mot(char* chaine) {
 
     // calcule la taille nécessaire pour la structure et la chaîne
-    size_t size = sizeof(Mot) + strlen(chaine) + 1; // +1 pour le caractère de fin 
+    size_t size = sizeof(Mot);
 
     Mot* mot = (Mot*) malloc(size);
+    printf("alloc faite\n");
 
     if (!mot) {
+        //free( (void*) chaine);
         return NULL; //l'allocation échoue
     }
+    //printf("pointeur non-vide\n");
     
     // initialisation des champs du Mot
     mot->nb_iterations = 1;
-    strcpy(mot->chaine, chaine);
-    mot->suivant = NULL;
-    
+    mot->chaine = chaine;
+
+    //printf("champs recopies\n");
     return mot;
 }
 
 /* Cherche le mot dans la liste de mot déjà 
    présents. Si le mot est trouvé, on renvoie 
    son adresse; Sinon, on renvoie NULL */
-Mot* cherche_iter(Liste lst, char* chaine) {
+Mot* cherche_iter(Liste lst, char* chaine, int lenliste) {
 
     if (!lst) return NULL; // liste vide
 
-    while (lst != NULL) {
+    int i=0;
+    while (i < lenliste) {
 
-        if (!strcmp(chaine, (lst)->chaine)) { // les chaînes sont égales
-            return lst;
+        if (!strcmp(chaine, lst[i].chaine)) { // les chaînes sont égales
+            return &(lst[i]); // == &(lst[i]);
         }
 
-        lst = (lst)->suivant;
+        i++;
     }
 
     return NULL;
@@ -120,40 +117,34 @@ void incremente_iter(Mot* mot) {
 /* Utilise un pointeur sur liste 
    pour accéder au dernier élément
     et raccorde le nouvel élém*/
-int ajoute_mot(Liste* lst, Mot* mot) { 
+int ajoute_mot(Liste lst, Mot mot, int lenliste, int capacite, InfoMem* infoMem) { 
 
-    while (*lst != NULL) {
-        lst = &(*lst)->suivant;
+    // UTILISER MYREALLOC POUR CECI 
+
+
+    if (lenliste >= capacite) { // reallocation
+        Liste tmp = (Liste) realloc(lst, 2*capacite);
+
+        if (!tmp)
+            return 0;
+        else 
+            lst = tmp;
     }
-    *lst = mot;
+
+    lst[lenliste++] = mot; // ajout du nouveau mot dans la case suivante
+
     return 1;
 }
 
-/*int addToListEndIn(List *lst, ValueType v) // add an element to the end of
-{
-    List newCell = createNewCell(v);
-    while (*lst != NULL) {
-        lst = &(*lst)->next;
+void printList(Liste lst, int lenliste) {
+    printf(" \nLISTE \n");
+    int i = 0;
+    while(i < lenliste){
+        printf("mot = %s : itérés %d fois \n", lst[i].chaine, lst[i].nb_iterations);
+        i++;
     }
-    *lst = newCell;
-    return 0;
-}*/
-void printList(Liste lst) {
-    printf(" LISTE \n");
-    while(lst != NULL){
-        printf("mot = %s : itérés %d fois \n", lst->chaine, lst->nb_iterations);
-        lst = lst->suivant;
-    }
-    printf("FIN LISTE\n");
+    printf("FIN LISTE\n\n");
 }
-
-/*void printList(List lst, const char msg) {
-    while (lst != NULL) {
-        printf("%d%c", lst->value, msg);
-        lst = lst->next;
-    }
-    printf("\n");
-}*/
 
 void chaineLower(char * chaine) {
     for (int i=0; i < strlen(chaine);  i++) {
@@ -161,12 +152,38 @@ void chaineLower(char * chaine) {
     }
 }
 
-int compte_iter_algo1(FILE* fichier){
-    printf("debut algo\n");
-    int c;
+int compareMot(const void *a, const void *b) {
+    const Mot *m1 = (Liste) a;
+    const Mot *m2 = (Liste) b;
+    return m2->nb_iterations - m1->nb_iterations; // trie dans l'ordre décroissant
+}
 
-    Liste liste_iter = NULL;
-    printList(liste_iter);
+void tri_qsort(Liste array_mots, int lenliste){
+    printf(" array complete\n");
+    qsort(array_mots, lenliste, sizeof(Mot), compareMot);
+    printf(" tri array complete\n");
+}
+
+void init_infoMem(InfoMem* im) {
+    im->cumul_alloc = 0;
+    im->cumul_desalloc = 0;
+    im->max_alloc = 0;
+    im->cumul_taille_mots = 0;
+}
+
+int compte_iter_algo1(FILE* fichier){
+    //printf("debut algo\n");
+    
+    // initialisation de la liste de mots
+    int capacite = 1000;
+    Liste liste_iter = malloc(sizeof(Mot) * capacite);
+    int nb_total_mots_differents = 0; // mettre ce champ dans InfoMem et update à chaque ajout ? 
+
+    // initialisation de la structure d'analyse de performance 
+    InfoMem infoMem; 
+    init_infoMem(&infoMem);
+
+    int c;
     while ((c = fgetc(fichier)) != EOF){
         printf("caractere analyse : %c\n", c);
         
@@ -177,36 +194,48 @@ int compte_iter_algo1(FILE* fichier){
                 printf(" caractere analyse pendant la selection des separateurs :%c", c);
             }
         }
-        if (c == EOF)
-            return 0;
-        printf("debut chaine\n");
+
+        if (c == EOF) // pour que ça n'analyse pas l'EOF 
+            break;
+
+        //printf("debut chaine\n");
         char* chaine = delimite_chaine(fichier, c); // découpe la suite de lettres entre des séparateurs (aka un mot)
 
         printf(" chaine = %s\n", chaine);
         chaineLower(chaine);                 // formatage des chaînes pour pas que "Bonjour" et "bonjour" soient des mots différents
 
-        printf("chaine correctement formatée : %s\n", chaine);
-        Mot* ptr_mot = cherche_iter(liste_iter, chaine);
+        //printf("chaine correctement formatée : %s\n", chaine);
+        Mot* ptr_mot = cherche_iter(liste_iter, chaine, nb_total_mots_differents);
         printf("ptr_mot = %p\n", ptr_mot);
 
-        if ( ptr_mot ) {          // s'il y a une itération,
+        if (ptr_mot) {                                   // s'il y a une itération,
             incremente_iter(ptr_mot);                     // on incrémente la valeur
             printf(" correctement incrémenté; nouvelle valeur = %d\n", ptr_mot->nb_iterations);
         } 
+        
         else {                                            // sinon,
+            printf("on cree le mot\n");
             Mot* mot = alloue_mot(chaine);                // on crée le Mot
-            printf(" mot : chaine = %s, nb_iter = %d, suivant = %p\n", mot->chaine, mot->nb_iterations, mot->suivant);
+            printf(" mot : chaine = %s, nb_iter = %d\n", mot->chaine, mot->nb_iterations);
+
             if (!mot) // problème d'allocation            
                 return 0;
             else{
                 printf("on ajoute le mot\n");
-                if (ajoute_mot(&liste_iter, mot))         // et on l'ajoute à la liste 
+
+                if (ajoute_mot(liste_iter, *mot, nb_total_mots_differents, capacite, &infoMem))        // et on l'ajoute à la liste 
                     printf("ajout correctement fait\n");
-                printList(liste_iter);
+
+                printList(liste_iter, nb_total_mots_differents);
+                nb_total_mots_differents++;
             }
         }
 
     }
+    printf(" tout le texte a été parcouru\n");
+    tri_qsort(liste_iter, nb_total_mots_differents);
+
+    printList(liste_iter, nb_total_mots_differents);
 
     return 1;
 }
@@ -223,7 +252,7 @@ int main(int argc, char* argv[]) {
     return 1;
 }
 
-    printf("fichier pas encore ouvert\n");
+    //printf("fichier pas encore ouvert\n");
     FILE *file = fopen(argv[1], "r");
     printf("fichier ouvert f = %s, file = %p\n", argv[1], file);
     if (!file) {
@@ -231,7 +260,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    printf("debut algo dehors\n");
+    //printf("debut algo dehors\n");
     compte_iter_algo1(file);
     
     fclose(file);
