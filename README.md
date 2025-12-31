@@ -1,1 +1,2 @@
-# word_counter
+COMMENT UTILISER LE PROGRAMME : 
+
